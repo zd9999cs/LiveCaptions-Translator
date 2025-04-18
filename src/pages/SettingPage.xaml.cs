@@ -15,16 +15,35 @@ namespace LiveCaptionsTranslator
         {
             InitializeComponent();
             ApplicationThemeManager.ApplySystemTheme();
-            DataContext = Translator.Setting;
+            
+            // Add null check before assigning DataContext
+            if (Translator.Setting != null)
+            {
+                DataContext = Translator.Setting;
+            }
+            else
+            {
+                // Handle the case where settings are null, maybe show an error or use default values
+                // For now, just prevent setting a null DataContext
+                System.Diagnostics.Debug.WriteLine("Warning: Translator.Setting is null in SettingPage constructor.");
+            }
 
             Loaded += (s, e) =>
             {
-                (App.Current.MainWindow as MainWindow)?.AutoHeightAdjust(
-                    maxHeight: (int)App.Current.MainWindow.MinHeight);
+                // Ensure MainWindow is not null before accessing properties/methods
+                var mainWindow = App.Current.MainWindow as MainWindow;
+                if (mainWindow != null)
+                {
+                    mainWindow.AutoHeightAdjust(maxHeight: (int)mainWindow.MinHeight);
+                }
             };
 
-            TranslateAPIBox.ItemsSource = Translator.Setting?.Configs.Keys;
-            TranslateAPIBox.SelectedIndex = 0;
+            // Add null check for Configs as well
+            if (Translator.Setting?.Configs != null)
+            {
+                TranslateAPIBox.ItemsSource = Translator.Setting.Configs.Keys;
+                TranslateAPIBox.SelectedIndex = 0; // Consider checking if Keys is empty
+            }
 
             LoadAPISetting();
         }
@@ -57,13 +76,14 @@ namespace LiveCaptionsTranslator
 
         private void TargetLangBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
-            if (TargetLangBox.SelectedItem != null)
-                Translator.Setting.TargetLanguage = TargetLangBox.SelectedItem.ToString();
+            if (Translator.Setting != null && TargetLangBox?.SelectedItem != null)
+                Translator.Setting.TargetLanguage = TargetLangBox.SelectedItem.ToString() ?? Translator.Setting.TargetLanguage;
         }
 
         private void TargetLangBox_LostFocus(object sender, RoutedEventArgs e)
         {
-            Translator.Setting.TargetLanguage = TargetLangBox.Text;
+            if (Translator.Setting != null && TargetLangBox != null)
+                Translator.Setting.TargetLanguage = TargetLangBox.Text;
         }
         
         private void APISettingButton_click(object sender, RoutedEventArgs e)
@@ -80,9 +100,14 @@ namespace LiveCaptionsTranslator
         
         private void CaptionLogMax_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
+            // Add null checks for Translator.Setting and related properties
+            if (Translator.Setting?.OverlayWindow == null || Translator.Setting?.MainWindow == null || Translator.Caption?.LogCards == null)
+                return;
+
             if (Translator.Setting.OverlayWindow.HistoryMax > Translator.Setting.MainWindow.CaptionLogMax)
                 Translator.Setting.OverlayWindow.HistoryMax = Translator.Setting.MainWindow.CaptionLogMax;
             
+            // Check if LogCards is not null before accessing Count
             while (Translator.Caption.LogCards.Count > Translator.Setting.MainWindow.CaptionLogMax)
                 Translator.Caption.LogCards.Dequeue();
             Translator.Caption.OnPropertyChanged("DisplayLogCards");
@@ -90,6 +115,10 @@ namespace LiveCaptionsTranslator
         
         private void OverlayHistoryMax_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
+            // Add null checks for Translator.Setting and related properties
+            if (Translator.Setting?.OverlayWindow == null || Translator.Setting?.MainWindow == null)
+                return;
+
             if (Translator.Setting.OverlayWindow.HistoryMax > Translator.Setting.MainWindow.CaptionLogMax)
                 Translator.Setting.MainWindow.CaptionLogMax = Translator.Setting.OverlayWindow.HistoryMax;
         }
@@ -146,35 +175,30 @@ namespace LiveCaptionsTranslator
 
         public void LoadAPISetting()
         {
-            var supportedLanguages = Translator.Setting.CurrentAPIConfig.SupportedLanguages;
+            // Add comprehensive null checks
+            if (Translator.Setting == null || TargetLangBox == null)
+                return;
+
+            // Check CurrentAPIConfig specifically
+            var currentConfig = Translator.Setting.CurrentAPIConfig;
+            if (currentConfig == null || currentConfig.SupportedLanguages == null)
+                return; // Cannot proceed if config or supported languages are missing
+
+            var supportedLanguages = currentConfig.SupportedLanguages;
             TargetLangBox.ItemsSource = supportedLanguages.Keys;
 
+            // Check if Translator.Setting is not null before accessing TargetLanguage
             string targetLang = Translator.Setting.TargetLanguage;
+            if (string.IsNullOrEmpty(targetLang)) // Handle case where targetLang might be null or empty initially
+            {
+                // Optionally set a default language or handle appropriately
+                // For now, just prevent potential errors if targetLang is needed later
+                return; 
+            }
+
             if (!supportedLanguages.ContainsKey(targetLang))
                 supportedLanguages[targetLang] = targetLang;    // add custom language to supported languages
             TargetLangBox.SelectedItem = targetLang;
-        }
-
-        private void ShowRelevantApiSettings(string selectedApi)
-        {
-            MTranServerSettings.Visibility = Visibility.Collapsed;
-            DeepLSettings.Visibility = Visibility.Collapsed;
-            YoudaoSettings.Visibility = Visibility.Collapsed;
-            GeminiSettings.Visibility = Visibility.Collapsed; // Add Gemini
-
-            switch (selectedApi)
-            {
-                // ... existing cases ...
-                case "Youdao":
-                    YoudaoSettings.Visibility = Visibility.Visible;
-                    break;
-                case "MTranServer":
-                    MTranServerSettings.Visibility = Visibility.Visible;
-                    break;
-                case "Gemini": // Add Gemini case
-                    GeminiSettings.Visibility = Visibility.Visible;
-                    break;
-            }
         }
     }
 }

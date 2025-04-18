@@ -191,7 +191,13 @@ namespace LiveCaptionsTranslator.models
                     continue;
                 var configType = Type.GetType($"LiveCaptionsTranslator.models.{key}Config");
                 if (configType != null && typeof(TranslateAPIConfig).IsAssignableFrom(configType))
-                    setting.Configs[key] = (TranslateAPIConfig)Activator.CreateInstance(configType);
+                {
+                    var instance = (TranslateAPIConfig?)Activator.CreateInstance(configType);
+                    if (instance != null) // Add null check
+                        setting.Configs[key] = instance;
+                    else // Handle case where instance creation failed (optional, could log error)
+                        setting.Configs[key] = new TranslateAPIConfig(); 
+                }
                 else
                     setting.Configs[key] = new TranslateAPIConfig();
             }
@@ -202,6 +208,8 @@ namespace LiveCaptionsTranslator.models
                 setting.Configs["MTranServer"] = new MTranServerConfig();
             if (!setting.Configs.ContainsKey("Gemini")) // Add Gemini default config
                 setting.Configs["Gemini"] = new GeminiConfig();
+
+            return setting; // Move this line outside the if blocks
         }
 
         public void Save()

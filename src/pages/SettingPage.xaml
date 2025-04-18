@@ -123,11 +123,7 @@
                     FontSize="13.3"
                     SelectedItem="{Binding ApiName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                     SelectionChanged="TranslateAPIBox_SelectionChanged">
-                    <ComboBoxItem Content="Google" />
-                    <ComboBoxItem Content="Google2" />
-                    <ComboBoxItem Content="Youdao" />
-                    <ComboBoxItem Content="MTranServer" />
-                    <ComboBoxItem Content="Gemini" />
+                    <!-- Removed hardcoded ComboBoxItems -->
                 </ComboBox>
             </StackPanel>
 
@@ -260,17 +256,6 @@
                     <ComboBoxItem Content="6" />
                 </ComboBox>
             </StackPanel>
-        </StackPanel>
-
-        <!-- Gemini Settings -->
-        <StackPanel x:Name="GeminiSettings" Visibility="Collapsed">
-            <TextBlock Text="Gemini API Key:" Margin="0,5,0,0"/>
-            <TextBox Text="{Binding Configs[Gemini].ApiKey, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,5"/>
-            <TextBlock Text="Model Name:" Margin="0,5,0,0"/>
-            <TextBox Text="{Binding Configs[Gemini].ModelName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,5"/>
-            <TextBlock Text="Temperature:" Margin="0,5,0,0"/>
-            <Slider Minimum="0" Maximum="2" Value="{Binding Configs[Gemini].Temperature, Mode=TwoWay}" TickFrequency="0.1" IsSnapToTickEnabled="True" Margin="0,0,0,5"/>
-            <TextBlock Text="{Binding ElementName=GeminiSettings, Path=DataContext.Configs[Gemini].Temperature, StringFormat='{}{0:F1}'}" HorizontalAlignment="Right"/>
         </StackPanel>
 
     </Grid>
