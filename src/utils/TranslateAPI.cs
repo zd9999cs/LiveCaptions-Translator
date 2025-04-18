@@ -484,8 +484,13 @@ namespace LiveCaptionsTranslator.utils
                 generationConfig = new
                 {
                     temperature = config.Temperature, // Use temperature from BaseLLMConfig
-                    maxOutputTokens = 128 // Increased token limit slightly
+                    maxOutputTokens = 128, // Increased token limit slightly
                     // candidateCount = 1 // Default is 1
+                    // Move thinkingConfig inside generationConfig
+                    thinkingConfig = new
+                    {
+                        thinkingBudget = 0
+                    }
                 }
                 // Optional: Add safetySettings if needed
             };
