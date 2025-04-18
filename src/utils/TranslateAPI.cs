@@ -25,6 +25,7 @@ namespace LiveCaptionsTranslator.utils
             { "OpenRouter", OpenRouter },
             { "Youdao", Youdao },
             { "MTranServer", MTranServer },
+            { "Gemini", Gemini }, // Add Gemini API
         };
 
         public static Func<string, CancellationToken, Task<string>> TranslateFunction
@@ -445,6 +446,114 @@ namespace LiveCaptionsTranslator.utils
             }
             else
                 return $"[Translation Failed] HTTP Error - {response.StatusCode}";
+        }
+
+        public static async Task<string> Gemini(string text, CancellationToken token = default)
+        {
+            var config = Translator.Setting.CurrentAPIConfig as GeminiConfig;
+            if (config == null) return "[Translation Failed] Gemini configuration is missing or invalid.";
+
+            string language = config.SupportedLanguages.TryGetValue(Translator.Setting.TargetLanguage, out var langValue)
+                ? langValue
+                : Translator.Setting.TargetLanguage;
+
+            // Construct the API URL with the API key
+            string apiUrlWithKey = $"{config.ApiUrl}?key={config.ApiKey}";
+
+            // Gemini API uses a different payload structure
+            var requestData = new
+            {
+                contents = new List<GeminiConfig.Content>
+                {
+                    // Optional: Add system instructions or context if needed, Gemini uses role 'model' for its responses and 'user' for prompts typically.
+                    // You might need to adjust the prompt format for Gemini.
+                    new GeminiConfig.Content {
+                        role = "user",
+                        parts = new List<GeminiConfig.ContentPart> { new GeminiConfig.ContentPart { text = string.Format(Prompt, language) } } // System prompt/instruction
+                    },
+                     new GeminiConfig.Content {
+                        role = "model", // Placeholder for expected model response structure if doing multi-turn
+                        parts = new List<GeminiConfig.ContentPart> { new GeminiConfig.ContentPart { text = "Okay, I will translate the following text." } }
+                    },
+                    new GeminiConfig.Content {
+                        role = "user",
+                        parts = new List<GeminiConfig.ContentPart> { new GeminiConfig.ContentPart { text = $"🔤 {text} 🔤" } } // Actual text to translate
+                    }
+                },
+                // Optional: Add generationConfig like temperature, maxOutputTokens etc.
+                generationConfig = new
+                {
+                    temperature = config.Temperature, // Use temperature from BaseLLMConfig
+                    maxOutputTokens = 128 // Increased token limit slightly
+                    // candidateCount = 1 // Default is 1
+                }
+                // Optional: Add safetySettings if needed
+            };
+
+
+            string jsonContent = JsonSerializer.Serialize(requestData, new JsonSerializerOptions { DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull });
+            var content = new StringContent(jsonContent, Encoding.UTF8, "application/json");
+
+            // Clear previous headers if reusing client, though Gemini doesn't use Authorization Bearer token typically
+            client.DefaultRequestHeaders.Clear();
+            // Gemini API key is usually passed as a query parameter, not a header.
+
+            HttpResponseMessage response;
+            try
+            {
+                response = await client.PostAsync(apiUrlWithKey, content, token);
+            }
+            catch (OperationCanceledException ex)
+            {
+                 // Check if it's a timeout (HttpRequestException with specific inner exception/message might be needed)
+                if (ex.Message.Contains("The request was canceled due to the configured HttpClient.Timeout")) // More specific check
+                     return $"[Translation Failed] Timeout: {ex.Message}";
+                // Handle task cancellation specifically
+                if (token.IsCancellationRequested)
+                    return string.Empty; // Or "[Translation Cancelled]"
+                // General cancellation (might wrap other exceptions)
+                return $"[Translation Failed] Operation Canceled: {ex.Message}";
+            }
+            catch (HttpRequestException httpEx) // Catch network-related errors
+            {
+                 return $"[Translation Failed] Network Error: {httpEx.Message}";
+            }
+            catch (Exception ex) // Catch other unexpected errors
+            {
+                return $"[Translation Failed] Error: {ex.Message}";
+            }
+
+
+            if (response.IsSuccessStatusCode)
+            {
+                string responseString = await response.Content.ReadAsStringAsync();
+                try
+                {
+                    var responseObj = JsonSerializer.Deserialize<GeminiConfig.Response>(responseString);
+                    // Extract text from the first candidate's content parts
+                    if (responseObj?.candidates != null && responseObj.candidates.Count > 0 &&
+                        responseObj.candidates[0].content?.parts != null && responseObj.candidates[0].content.parts.Count > 0)
+                    {
+                        // Combine text from potentially multiple parts, though usually one for simple generation
+                        return string.Join("", responseObj.candidates[0].content.parts.Select(p => p.text));
+                    }
+                    else
+                    {
+                        // Handle cases where the response structure is unexpected or empty
+                        return "[Translation Failed] Unexpected API response format or empty content.";
+                    }
+                }
+                catch (JsonException jsonEx)
+                {
+                    return $"[Translation Failed] Error parsing response: {jsonEx.Message}";
+                }
+            }
+            else
+            {
+                 // Attempt to read error details from the response body
+                string errorBody = await response.Content.ReadAsStringAsync();
+                return $"[Translation Failed] HTTP Error - {response.StatusCode}. Details: {errorBody}";
+            }
         }
     }
 

@@ -154,5 +154,27 @@ namespace LiveCaptionsTranslator
                 supportedLanguages[targetLang] = targetLang;    // add custom language to supported languages
             TargetLangBox.SelectedItem = targetLang;
         }
+
+        private void ShowRelevantApiSettings(string selectedApi)
+        {
+            MTranServerSettings.Visibility = Visibility.Collapsed;
+            DeepLSettings.Visibility = Visibility.Collapsed;
+            YoudaoSettings.Visibility = Visibility.Collapsed;
+            GeminiSettings.Visibility = Visibility.Collapsed; // Add Gemini
+
+            switch (selectedApi)
+            {
+                // ... existing cases ...
+                case "Youdao":
+                    YoudaoSettings.Visibility = Visibility.Visible;
+                    break;
+                case "MTranServer":
+                    MTranServerSettings.Visibility = Visibility.Visible;
+                    break;
+                case "Gemini": // Add Gemini case
+                    GeminiSettings.Visibility = Visibility.Visible;
+                    break;
+            }
+        }
     }
 }

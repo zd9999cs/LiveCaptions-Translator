@@ -196,8 +196,12 @@ namespace LiveCaptionsTranslator.models
                     setting.Configs[key] = new TranslateAPIConfig();
             }
 
-            setting.Save();
-            return setting;
+            if (!setting.Configs.ContainsKey("Youdao"))
+                setting.Configs["Youdao"] = new YoudaoConfig();
+            if (!setting.Configs.ContainsKey("MTranServer"))
+                setting.Configs["MTranServer"] = new MTranServerConfig();
+            if (!setting.Configs.ContainsKey("Gemini")) // Add Gemini default config
+                setting.Configs["Gemini"] = new GeminiConfig();
         }
 
         public void Save()

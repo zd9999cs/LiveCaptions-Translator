@@ -306,4 +306,64 @@ namespace LiveCaptionsTranslator.models
             public string result { get; set; }
         }
     }
+
+    public class GeminiConfig : BaseLLMConfig
+    {
+        // Define the structure for the Gemini API request content
+        public class ContentPart
+        {
+            public string text { get; set; }
+        }
+
+        public class Content
+        {
+            public string role { get; set; } // Typically "user" or "model"
+            public List<ContentPart> parts { get; set; }
+        }
+
+        // Define the structure for the Gemini API response
+        public class Candidate
+        {
+            public Content content { get; set; }
+            // Add other relevant properties like finishReason, safetyRatings if needed
+        }
+
+        public class Response
+        {
+            public List<Candidate> candidates { get; set; }
+            // Add promptFeedback if needed
+        }
+
+
+        private string apiKey = "";
+        // Default to gemini-1.5-flash, user can change if needed via settings potentially
+        private string modelName = "gemini-1.5-flash"; 
+        // Gemini API endpoint structure often includes the model name
+        private string apiUrlTemplate = "https://generativelanguage.googleapis.com/v1beta/models/{0}:generateContent";
+
+        public string ApiKey
+        {
+            get => apiKey;
+            set
+            {
+                apiKey = value;
+                OnPropertyChanged("ApiKey");
+            }
+        }
+
+        // Override ModelName from BaseLLMConfig if needed, or use it directly
+        public new string ModelName
+        {
+             get => modelName;
+             set
+             {
+                 modelName = value;
+                 OnPropertyChanged("ModelName");
+             }
+        }
+
+        // Read-only property to get the final API URL
+        [JsonIgnore]
+        public string ApiUrl => string.Format(apiUrlTemplate, ModelName);
+    }
 }
